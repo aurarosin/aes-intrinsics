@@ -2,6 +2,7 @@
 //#include <wmmintrin.h>
 #include <emmintrin.h>
 #include <smmintrin.h>
+#include <stdio.h>
 
 static inline __m128i AES_128_ASSIST(__m128i temp1, __m128i temp2) {
   __m128i temp3;
@@ -16,10 +17,11 @@ static inline __m128i AES_128_ASSIST(__m128i temp1, __m128i temp2) {
   return temp1;
 }
 
-void AES_128_Key_Expansion(const unsigned char *userkey, unsigned char *key) {
+void AES_128_Key_Expansion(const unsigned char *key,
+                           unsigned char *key_expanded) {
   __m128i temp1, temp2;
-  __m128i *Key_Schedule = (__m128i *)key;
-  temp1 = _mm_loadu_si128((__m128i *)userkey);
+  __m128i *Key_Schedule = (__m128i *)key_expanded;
+  temp1 = _mm_loadu_si128((__m128i *)key);
   Key_Schedule[0] = temp1;
   temp2 = _mm_aeskeygenassist_si128(temp1, 0x1);
   temp1 = AES_128_ASSIST(temp1, temp2);
@@ -107,13 +109,27 @@ void AES_ECB_decrypt(const unsigned char *in, unsigned char *out,
 
 int main() {
   int rounds = 10;
-  const char* key = "MyKey";
-  char* text = "Hello World!";
+  const char *key = "2b7e151628aed2a6abf7158809cf4f3c";
+  char *text = "3243f6a8885a308d313198a2e0370734";
 
-  const unsigned char text_bytes[200];
-  const unsigned char encrypt_bytes[200];
-  const unsigned char dencrypt_bytes[200];
+  const unsigned char text_bytes[16] = {50, 67, 246, 168, 136, 90, 48, 141,
+                                        49, 49, 152, 162, 224, 55, 7,  52};
+  const unsigned char key_bytes[16] = {43,  126, 21, 22,  40, 174, 210, 166,
+                                       171, 247, 21, 136, 9,  207, 79,  60};
+  unsigned char key_expanded[16 * 11];
+  unsigned char encrypt_bytes[16];
+  const unsigned char dencrypt_bytes[16];
 
+  AES_128_Key_Expansion(key_bytes, key_expanded);
+  AES_ECB_encrypt(text_bytes, encrypt_bytes, 16, key_expanded, 10);
+
+  printf("Encrypt: ");
+
+  for (int i = 0; i < 16; i++) {
+    printf("%02x", encrypt_bytes[i]);
+  }
+
+  printf("\n");
 
   return 0;
 }

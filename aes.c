@@ -8,10 +8,10 @@
 
 unsigned char* hex_to_bytes(char* hex) {}
 
-char* bytes_to_hex(unsigned char* bytes) {
-  char* hex = (char*)malloc(sizeof(char) * 16);
+char* bytes_to_hex(unsigned char* bytes, int len) {
+  char* hex = (char*)malloc(sizeof(char) * 2 * len);
 
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < len; i++) {
     sprintf(&hex[i * 2], "%02x", bytes[i]);
   }
 
@@ -36,15 +36,18 @@ unsigned char* padding(unsigned char* in, int len) {
   return result;
 }
 
-char* text_encrypt(char* text, char* key_bytes) {
+char* text_encrypt(char* text, unsigned char* key_bytes) {
   int len = strlen(text);
   unsigned char* text_bytes = padding((unsigned char*)text, len);
-  // const unsigned char key_bytes[16] = key;
+  char* encrypt;
 
   unsigned char key_expanded[16 * 11];
   unsigned char encrypt_bytes[16];
-  const unsigned char dencrypt_bytes[16];
 
   AES_128_Key_Expansion(key_bytes, key_expanded);
   AES_ECB_encrypt(text_bytes, encrypt_bytes, 16, key_expanded, ROUNDS);
+
+  encrypt = bytes_to_hex(encrypt_bytes, 16);
+
+  return encrypt;
 }

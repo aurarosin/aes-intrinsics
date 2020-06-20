@@ -3,9 +3,7 @@
 #include <emmintrin.h>
 #include <smmintrin.h>
 
-
-
-inline __m128i AES_128_ASSIST(__m128i temp1, __m128i temp2) {
+static inline __m128i AES_128_ASSIST(__m128i temp1, __m128i temp2) {
   __m128i temp3;
   temp2 = _mm_shuffle_epi32(temp2, 0xff);
   temp3 = _mm_slli_si128(temp1, 0x4);
@@ -107,6 +105,15 @@ void AES_ECB_decrypt(const unsigned char *in, unsigned char *out,
   }
 }
 
-int main (){
-    return 0;
+int main() {
+  int rounds = 10;
+  const char* key = "MyKey";
+  char* text = "Hello World!";
+
+  const unsigned char text_bytes[200];
+  const unsigned char encrypt_bytes[200];
+  const unsigned char dencrypt_bytes[200];
+
+
+  return 0;
 }

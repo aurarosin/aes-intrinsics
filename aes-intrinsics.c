@@ -1,8 +1,6 @@
-#include <wmmintrin.h>
-//#include <wmmintrin.h>
 #include <emmintrin.h>
 #include <smmintrin.h>
-#include <stdio.h>
+#include <wmmintrin.h>
 
 static inline __m128i AES_128_ASSIST(__m128i temp1, __m128i temp2) {
   __m128i temp3;
@@ -55,18 +53,22 @@ void AES_128_Key_Expansion(const unsigned char *key,
   Key_Schedule[10] = temp1;
 }
 
-/* Note – the length of the output buffer is assumed to be a multiple of 16
- * bytes */
+/**
+ * @param in Pointer to the PLAINTEXT
+ * @param out Pointer to the CIPHERTEXT buffer
+ * @param length Text length in bytes
+ * @param key Pointer to the expanded key schedule
+ * @param number_of_rounds Number of AES rounds 10,12 or 14
+ *
+ * @note The length of the output buffer is assumed to be a multiple of 16
+ * bytes
+ */
 void AES_ECB_encrypt(const unsigned char *in, unsigned char *out,
                      unsigned long length, const char *key,
                      int number_of_rounds) {
   __m128i tmp;
   int i, j;
-  // pointer to the PLAINTEXT
-  // pointer to the CIPHERTEXT buffer
-  // text length in bytes
-  // pointer to the expanded key schedule
-  // number of AES rounds 10,12 or 14
+
   if (length % 16)
     length = length / 16 + 1;
   else
@@ -82,16 +84,19 @@ void AES_ECB_encrypt(const unsigned char *in, unsigned char *out,
   }
 }
 
+/**
+ * @param in Pointer to the CIPHERTEXT
+ * @param out Pointer to the DECRYPTED TEXT buffer
+ * @param length Text length in bytes
+ * @param key Pointer to the expanded key schedule
+ * @param number_of_rounds Number of AES rounds 10,12 or 14
+ */
 void AES_ECB_decrypt(const unsigned char *in, unsigned char *out,
                      unsigned long length, const char *key,
                      int number_of_rounds) {
   __m128i tmp;
   int i, j;
-  // pointer to the CIPHERTEXT
-  // pointer to the DECRYPTED TEXT buffer
-  // text length in bytes
-  // pointer to the expanded key schedule
-  // number of AES rounds 10,12 or 14
+
   if (length % 16)
     length = length / 16 + 1;
   else
@@ -107,29 +112,77 @@ void AES_ECB_decrypt(const unsigned char *in, unsigned char *out,
   }
 }
 
-int main() {
-  int rounds = 10;
-  const char *key = "2b7e151628aed2a6abf7158809cf4f3c";
-  char *text = "3243f6a8885a308d313198a2e0370734";
-
-  const unsigned char text_bytes[16] = {50, 67, 246, 168, 136, 90, 48, 141,
-                                        49, 49, 152, 162, 224, 55, 7,  52};
-  const unsigned char key_bytes[16] = {43,  126, 21, 22,  40, 174, 210, 166,
-                                       171, 247, 21, 136, 9,  207, 79,  60};
-  unsigned char key_expanded[16 * 11];
-  unsigned char encrypt_bytes[16];
-  const unsigned char dencrypt_bytes[16];
-
-  AES_128_Key_Expansion(key_bytes, key_expanded);
-  AES_ECB_encrypt(text_bytes, encrypt_bytes, 16, key_expanded, 10);
-
-  printf("Encrypt: ");
-
-  for (int i = 0; i < 16; i++) {
-    printf("%02x", encrypt_bytes[i]);
+void AES_CBC_encrypt(const unsigned char *in, unsigned char *out,
+                     unsigned char ivec[16], unsigned long length,
+                     unsigned char *key, int number_of_rounds) {
+  __m128i feedback, data;
+  int i, j;
+  if (length % 16)
+    length = length / 16 + 1;
+  else
+    length /= 16;
+  feedback = _mm_loadu_si128((__m128i *)ivec);
+  for (i = 0; i < length; i++) {
+    data = _mm_loadu_si128(&((__m128i *)in)[i]);
+    feedback = _mm_xor_si128(data, feedback);
+    feedback = _mm_xor_si128(feedback, ((__m128i *)key)[0]);
+    for (j = 1; j < number_of_rounds; j++)
+      feedback = _mm_aesenc_si128(feedback, ((__m128i *)key)[j]);
+    feedback = _mm_aesenclast_si128(feedback, ((__m128i *)key)[j]);
+    _mm_storeu_si128(&((__m128i *)out)[i], feedback);
   }
+}
 
-  printf("\n");
+void AES_CBC_decrypt(const unsigned char *in, unsigned char *out,
+                     unsigned char ivec[16], unsigned long length,
+                     unsigned char *key, int number_of_rounds) {
+  __m128i data, feedback, last_in;
+  int i, j;
+  if (length % 16)
+    length = length / 16 + 1;
+  else
+    length /= 16;
+  feedback = _mm_loadu_si128((__m128i *)ivec);
+  for (i = 0; i < length; i++) {
+    last_in = _mm_loadu_si128(&((__m128i *)in)[i]);
+    data = _mm_xor_si128(last_in, ((__m128i *)key)[0]);
+    for (j = 1; j < number_of_rounds; j++) {
+      data = _mm_aesdec_si128(data, ((__m128i *)key)[j]);
+    }
+    data = _mm_aesdeclast_si128(data, ((__m128i *)key)[j]);
+    data = _mm_xor_si128(data, feedback);
+    _mm_storeu_si128(&((__m128i *)out)[i], data);
+    feedback = last_in;
+  }
+}
 
-  return 0;
+void AES_CTR_encrypt(const unsigned char *in, unsigned char *out,
+                     const unsigned char ivec[8], const unsigned char nonce[4],
+                     unsigned long length, const unsigned char *key,
+                     int number_of_rounds) {
+  __m128i ctr_block, tmp, ONE, BSWAP_EPI64;
+  int i, j;
+  if (length % 16)
+    length = length / 16 + 1;
+  else
+    length /= 16;
+  ONE = _mm_set_epi32(0, 1, 0, 0);
+  BSWAP_EPI64 =
+      _mm_setr_epi8(7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8);
+  ctr_block = _mm_insert_epi64(ctr_block, *(long long *)ivec, 1);
+  ctr_block = _mm_insert_epi32(ctr_block, *(long *)nonce, 1);
+  ctr_block = _mm_srli_si128(ctr_block, 4);
+  ctr_block = _mm_shuffle_epi8(ctr_block, BSWAP_EPI64);
+  ctr_block = _mm_add_epi64(ctr_block, ONE);
+  for (i = 0; i < length; i++) {
+    tmp = _mm_shuffle_epi8(ctr_block, BSWAP_EPI64);
+    ctr_block = _mm_add_epi64(ctr_block, ONE);
+    tmp = _mm_xor_si128(tmp, ((__m128i *)key)[0]);
+    for (j = 1; j < number_of_rounds; j++) {
+      tmp = _mm_aesenc_si128(tmp, ((__m128i *)key)[j]);
+    };
+    tmp = _mm_aesenclast_si128(tmp, ((__m128i *)key)[j]);
+    tmp = _mm_xor_si128(tmp, _mm_loadu_si128(&((__m128i *)in)[i]));
+    _mm_storeu_si128(&((__m128i *)out)[i], tmp);
+  }
 }

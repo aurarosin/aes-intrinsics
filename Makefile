@@ -19,6 +19,6 @@ lib/utils.o: lib/utils.c include/utils.h
 	gcc lib/utils.c -o lib/utils.o -O2 -c -Iinclude
 
 clean:
-	rm -rf *.o CMakeFiles/ *.cmake CMakeCache.txt *.a AES
+	rm -rf **/*.o CMakeFiles/ *.cmake CMakeCache.txt *.a AES
 
 .PHONY: build run clean

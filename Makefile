@@ -1,22 +1,24 @@
-build: main.o
+PROJ=AES
+
+build: $(PROJ)
 
 run: build
-	./main.o
+	./$(PROJ)
 
-main.o: main.c aes.o aes-intrinsics.o utils.o
-	gcc main.c aes.o aes-intrinsics.o utils.o -o main.o -O2
+$(PROJ): main.c lib/aes.o lib/aes-intrinsics.o lib/utils.o
+	gcc main.c lib/aes.o lib/aes-intrinsics.o lib/utils.o -o $(PROJ) -O2 -Iinclude
 	@echo "Compilado correctamente."
 
-aes-intrinsics.o: aes-intrinsics.c aes-intrinsics.h
-	gcc aes-intrinsics.c -o aes-intrinsics.o -O2 -c -maes -mavx
+lib/aes-intrinsics.o: lib/aes-intrinsics.c include/aes-intrinsics.h
+	gcc lib/aes-intrinsics.c -o lib/aes-intrinsics.o -O2 -c -maes -mavx -Iinclude
 
-aes.o: aes.c aes.h
-	gcc aes.c -o aes.o -O2 -c
+lib/aes.o: lib/aes.c include/aes.h
+	gcc lib/aes.c -o lib/aes.o -O2 -c -Iinclude
 
-utils.o: utils.c utils.h
-	gcc utils.c -o utils.o -O2 -c
+lib/utils.o: lib/utils.c include/utils.h
+	gcc lib/utils.c -o lib/utils.o -O2 -c -Iinclude
 
 clean:
-	rm *.o
+	rm -rf *.o CMakeFiles/ *.cmake CMakeCache.txt *.a AES
 
 .PHONY: build run clean

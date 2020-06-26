@@ -31,8 +31,8 @@ char* bytes_to_hex(unsigned char* bytes, int len) {
 }
 
 unsigned char* bit_padding(unsigned char* in, int len) {
-  int restante = 16 - (len % 16);
-  int newLen = len + restante;
+  int restante = 16 - ((len + 1) % 16);
+  int newLen = (len + 1) + restante;
 
   unsigned char* result =
       (unsigned char*)malloc(sizeof(unsigned char) * newLen);
@@ -40,9 +40,38 @@ unsigned char* bit_padding(unsigned char* in, int len) {
   memset(result, 0, sizeof(char) * newLen);
   memcpy(result, in, len);
 
-  if (restante > 0) {
-    result[len] = 0x80;
+  result[len] = 0x80;
+
+  return result;
+}
+
+unsigned char* cms_padding(unsigned char* in, int len) {
+  int restante = 16 - (len % 16);
+  restante = restante == 0 ? 16 : restante;
+  int newLen = (len + restante);
+
+  unsigned char* result =
+      (unsigned char*)malloc(sizeof(unsigned char) * newLen);
+
+  memset(result, 0, sizeof(char) * newLen);
+  memcpy(result, in, len);
+
+  for (int i = 0; i < restante; i++) {
+    result[len + i] = restante;
   }
+
+  return result;
+}
+
+unsigned char* without_cms_padding(unsigned char* in, int len) {
+  int padding = in[len - 1];
+  int newLen = len - padding;
+
+  unsigned char* result =
+      (unsigned char*)malloc(sizeof(unsigned char) * (newLen + 1));
+
+  memcpy(result, in, newLen);
+  result[newLen] = 0;
 
   return result;
 }

@@ -2,6 +2,8 @@
 #include <smmintrin.h>
 #include <wmmintrin.h>
 
+#include "utils.h"
+
 static inline __m128i AES_128_ASSIST(__m128i temp1, __m128i temp2) {
   __m128i temp3;
   temp2 = _mm_shuffle_epi32(temp2, 0xff);
@@ -51,6 +53,27 @@ void AES_128_Key_Expansion(const unsigned char *key,
   temp2 = _mm_aeskeygenassist_si128(temp1, 0x36);
   temp1 = AES_128_ASSIST(temp1, temp2);
   Key_Schedule[10] = temp1;
+}
+
+void AES_128_Key_Expansion_Inv(const unsigned char *key,
+                               unsigned char *key_expanded) {
+  unsigned char key_expanded_tmp[16 * 11];
+  AES_128_Key_Expansion(key, key_expanded_tmp);
+
+  __m128i *Key_Schedule = (__m128i *)key_expanded;
+  __m128i *Key_Schedule_tmp = (__m128i *)key_expanded_tmp;
+
+  Key_Schedule[0] = Key_Schedule_tmp[10];
+  Key_Schedule[1] = _mm_aesimc_si128(Key_Schedule_tmp[9]);
+  Key_Schedule[2] = _mm_aesimc_si128(Key_Schedule_tmp[8]);
+  Key_Schedule[3] = _mm_aesimc_si128(Key_Schedule_tmp[7]);
+  Key_Schedule[4] = _mm_aesimc_si128(Key_Schedule_tmp[6]);
+  Key_Schedule[5] = _mm_aesimc_si128(Key_Schedule_tmp[5]);
+  Key_Schedule[6] = _mm_aesimc_si128(Key_Schedule_tmp[4]);
+  Key_Schedule[7] = _mm_aesimc_si128(Key_Schedule_tmp[3]);
+  Key_Schedule[8] = _mm_aesimc_si128(Key_Schedule_tmp[2]);
+  Key_Schedule[9] = _mm_aesimc_si128(Key_Schedule_tmp[1]);
+  Key_Schedule[10] = Key_Schedule_tmp[0];
 }
 
 /**
@@ -112,23 +135,50 @@ void AES_ECB_decrypt(const unsigned char *in, unsigned char *out,
   }
 }
 
+void AES_block_encrypt(__m128i in, __m128i *out, __m128i *key,
+                       int number_of_rounds) {
+  __m128i tmp;
+  int j;
+
+  tmp = _mm_xor_si128(in, key[0]);
+  for (j = 1; j < number_of_rounds; j++) {
+    tmp = _mm_aesenc_si128(tmp, ((__m128i *)key)[j]);
+  }
+  *out = _mm_aesenclast_si128(tmp, ((__m128i *)key)[number_of_rounds]);
+}
+
+void AES_block_decrypt(__m128i in, __m128i *out, __m128i *key,
+                       int number_of_rounds) {
+  __m128i tmp;
+  int j;
+
+  tmp = _mm_xor_si128(in, key[0]);
+  for (j = 1; j < number_of_rounds; j++) {
+    tmp = _mm_aesdec_si128(tmp, ((__m128i *)key)[j]);
+  }
+  *out = _mm_aesdeclast_si128(tmp, ((__m128i *)key)[number_of_rounds]);
+}
+
 void AES_CBC_encrypt(const unsigned char *in, unsigned char *out,
                      unsigned char ivec[16], unsigned long length,
                      unsigned char *key, int number_of_rounds) {
   __m128i feedback, data;
-  int i, j;
+
+  int i;
+
   if (length % 16)
     length = length / 16 + 1;
   else
     length /= 16;
+
   feedback = _mm_loadu_si128((__m128i *)ivec);
   for (i = 0; i < length; i++) {
     data = _mm_loadu_si128(&((__m128i *)in)[i]);
+
     feedback = _mm_xor_si128(data, feedback);
-    feedback = _mm_xor_si128(feedback, ((__m128i *)key)[0]);
-    for (j = 1; j < number_of_rounds; j++)
-      feedback = _mm_aesenc_si128(feedback, ((__m128i *)key)[j]);
-    feedback = _mm_aesenclast_si128(feedback, ((__m128i *)key)[j]);
+
+    AES_block_encrypt(feedback, &feedback, (__m128i *)key, number_of_rounds);
+
     _mm_storeu_si128(&((__m128i *)out)[i], feedback);
   }
 }
@@ -145,12 +195,11 @@ void AES_CBC_decrypt(const unsigned char *in, unsigned char *out,
   feedback = _mm_loadu_si128((__m128i *)ivec);
   for (i = 0; i < length; i++) {
     last_in = _mm_loadu_si128(&((__m128i *)in)[i]);
-    data = _mm_xor_si128(last_in, ((__m128i *)key)[0]);
-    for (j = 1; j < number_of_rounds; j++) {
-      data = _mm_aesdec_si128(data, ((__m128i *)key)[j]);
-    }
-    data = _mm_aesdeclast_si128(data, ((__m128i *)key)[j]);
+
+    AES_block_decrypt(last_in, &data, (__m128i *)key, number_of_rounds);
+
     data = _mm_xor_si128(data, feedback);
+
     _mm_storeu_si128(&((__m128i *)out)[i], data);
     feedback = last_in;
   }

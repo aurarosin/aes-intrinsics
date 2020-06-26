@@ -3,6 +3,8 @@
 static inline __m128i AES_128_ASSIST(__m128i temp1, __m128i temp2);
 void AES_128_Key_Expansion(const unsigned char *key,
                            unsigned char *key_expanded);
+void AES_128_Key_Expansion_Inv(const unsigned char *key,
+                               unsigned char *key_expanded);
 
 void AES_ECB_encrypt(const unsigned char *in, unsigned char *out,
                      unsigned long length, const char *key,

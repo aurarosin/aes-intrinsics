@@ -21,4 +21,7 @@ lib/utils.o: lib/utils.c include/utils.h
 clean:
 	rm -rf **/*.o CMakeFiles/ *.cmake CMakeCache.txt *.a AES
 
-.PHONY: build run clean
+test:
+	openssl aes-128-cbc -in test/in.dat -out test/out.dat -K 31323334353637383930313233343536 -iv 00000000000000000000000000000000
+
+.PHONY: build run clean test

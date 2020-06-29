@@ -5,6 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <wmmintrin.h>
+
+#include "aes.h"
+
 /**
  * Encode a number x in s bits.
  */
@@ -134,4 +138,53 @@ unsigned char* formatting_input_data(unsigned char* N, size_t n,
   free(Bu);
 
   return B;
+}
+
+// 1.Apply the formatting function to ( N , A , P ) to produce the blocks B 0 ,
+// B 1 , ..., B r .
+// 2.Set Y 0 = CIPH K ( B 0 ).
+// 3.For i = 1 to r , do Y i = CIPH K ( B i ⊕ Y i-1 ).
+// 4.Set T =MSB Tlen ( Y r ).
+// 5.Apply the counter generation function to generate the counter blocks Ctr 0
+// , Ctr 1 ,
+// ..., Ctr m , where m = ⎡ Plen 128 ⎤ .
+// 6.For j =0 to m , do S j = CIPH K ( Ctr j ).
+// 7.Set S= S 1 || S 2 || ...|| S m .
+// 8.Return C =( P ⊕ MSB Plen ( S )) || ( T ⊕ MSB Tlen ( S 0 )).
+
+void ccm(int nonce, char* A, char* P, unsigned char* key) {
+  // 1.Apply the formatting function to ( N , A , P ) to produce the blocks B 0
+  // , B 1 , ..., B r .
+  int lenP = strlen(P);
+  int lenP_r = lenP / 128;
+  unsigned char b[lenP_r];
+  // unsigned char y[lenP_r];
+  int newLen =
+      ((lenP + 1) % 16 == 0) ? (lenP + 1) : (lenP + 1) + (16 - (lenP + 1) % 16);
+
+  unsigned char y[newLen];
+
+  int number_of_rounds = 10;
+  unsigned char key_expanded[16 * (ROUNDS + 1)];
+  AES_128_Key_Expansion((const unsigned char*)key, key_expanded);
+  // 2.Set Y 0 = CIPH K ( B 0 ).
+  __m128i in;
+  in = _mm_loadu_si128((__m128i*)b[0]);
+  // y[0]= CIPH K ( B 0 ).
+  // void AES_block_encrypt(__m128i in, __m128i *out, __m128i *key, int
+  // number_of_rounds)
+
+  AES_block_encrypt(in, &y[0], (__m128i*)key_expanded, number_of_rounds);
+
+  // 3.For i = 1 to r , do Y i = CIPH K ( B i ⊕ Y i-1 ).
+  unsigned char* text_bytes = cms_padding((unsigned char*)b, lenP);
+  AES_CBC_encrypt(text_bytes, y, y[0], newLen, key_expanded, ROUNDS);
+  // char* encrypt = bytes_to_hex(encrypt_bytes, newLen);
+
+  // 4.Set T =MSB Tlen ( Y r ). la cadena de tamaño Tlen de los bits mas
+  // significativos izquierdos de Yr unsigned char* T=
+
+  //  5.Apply the counter generation function to generate the counter blocks Ctr
+  //  0 , Ctr 1 ,
+  // ..., Ctr m , where m = ⎡ Plen 128 ⎤
 }

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "aes.h"
 #include "ccm.h"
@@ -23,21 +24,29 @@ void test_aes_cbc() {
 }
 
 void test_ccm_formatting() {
-  unsigned char N[8] = {0b00010011, 0b11010100, 0b10100011, 0b01011101, 0b01110001, 0b10100101, 0b00000000, 0b00000000};
-  
-  __uint8_t* formatt = formatting(N, 8, NULL, 1, NULL, 17409, 12);
-  for (size_t i = 0; i < 16; i++)
-  {
-    printf("%02x", formatt[i]);
+  size_t n = 8, a = 5, p = 17409;
+  size_t t = 12, r;
+  unsigned char N[] = {0b00010011, 0b11010100, 0b10100011, 0b01011101,
+                        0b01110001, 0b10100101, 0b00000000, 0b00000000};
+  unsigned char A[a];
+  unsigned char P[p];
+  memset(A, 0xaa, a);
+  memset(P, 0xbb, p);
+
+  __uint8_t* formatting_input = formatting_input_data(N, n, A, a, P, p, t, &r);
+  for (size_t i = 0; i < 16 * r; i++) {
+    printf("%02x", formatting_input[i]);
   }
   printf("\n");
-  free(formatt);
+
+  free(formatting_input);
 }
 
 int main() {
-  
   test_aes_cbc();
   test_ccm_formatting();
+
+  printf("TQ, wait for me.");
 
   return 0;
 }

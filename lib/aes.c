@@ -10,7 +10,8 @@
 char* text_encrypt(char* text, char* key_bytes) {
   int len = strlen(text);
   unsigned char* text_bytes = cms_padding((unsigned char*)text, len);
-  int newLen = ((len + 1) % 16 == 0) ? (len + 1) : (len+1) + (16 - (len+1) % 16);
+  int newLen =
+      ((len + 1) % 16 == 0) ? (len + 1) : (len + 1) + (16 - (len + 1) % 16);
 
   unsigned char key_expanded[16 * (ROUNDS + 1)];
   unsigned char encrypt_bytes[newLen];
@@ -36,10 +37,11 @@ char* text_decrypt(char* encrypt, char* key_bytes) {
   unsigned char ivec[16] = IV;
 
   AES_128_Key_Expansion_Inv((const unsigned char*)key_bytes, key_expanded);
-  AES_CBC_decrypt(encrypt_bytes, decrypt_with_padding, ivec, len / 2, key_expanded,
-                  ROUNDS);
+  AES_CBC_decrypt(encrypt_bytes, decrypt_with_padding, ivec, len / 2,
+                  key_expanded, ROUNDS);
 
-  char* decrypt = without_cms_padding((unsigned char*)decrypt_with_padding, len/2);
+  char* decrypt =
+      without_cms_padding((unsigned char*)decrypt_with_padding, len / 2);
 
   free(encrypt_bytes);
   free(decrypt_with_padding);

@@ -218,9 +218,9 @@ void MSB(unsigned char* x, size_t lenX, size_t s, unsigned char* out) {
 // 6.For j =0 to m , do S j = CIPH K ( Ctr j ).
 // 7.Set S= S 1 || S 2 || ...|| S m .
 // 8.Return C =( P ⊕ MSB Plen ( S )) || ( T ⊕ MSB Tlen ( S 0 )).
-void ccm(unsigned char* nonce, size_t n, unsigned char* A, size_t a,
-         unsigned char* P, size_t p, unsigned char* key, size_t Tlen,
-         unsigned char* out) {
+void ccm_encrypt(unsigned char* nonce, size_t n, unsigned char* A, size_t a,
+                 unsigned char* P, size_t p, unsigned char* key, size_t Tlen,
+                 unsigned char* out) {
   unsigned char key_expanded[16 * (ROUNDS + 1)];
   AES_128_Key_Expansion((const unsigned char*)key, key_expanded);
   // printf("A: %s\n", bytes_to_hex(A, a));
@@ -291,4 +291,10 @@ void ccm(unsigned char* nonce, size_t n, unsigned char* A, size_t a,
   xor(T, msb_s0, Tlen, &out[p]);
 
   free(b);
+}
+
+void ccm_decrypt(unsigned char* nonce, size_t n, unsigned char* A, size_t a,
+                 unsigned char* P, size_t p, unsigned char* key, size_t Tlen,
+                 unsigned char* out) {
+  // TODO
 }

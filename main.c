@@ -51,9 +51,9 @@ void test_ccm() {
   size_t Tlen = 32, Plen = 32, n = 56 / 8, a = 64 / 8, p = Plen / 8;
 
   __uint8_t c[Plen + Tlen];
-  ccm(N, n, A, a, P, p, K, Tlen, c);
+  ccm_encrypt(N, n, A, a, P, p, K, Tlen, c);
 
-  printf("C: %s\n", bytes_to_hex(c, p + Tlen/8));
+  printf("C: %s\n", bytes_to_hex(c, p + Tlen / 8));
 }
 
 int main() {

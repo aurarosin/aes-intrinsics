@@ -16,17 +16,17 @@ test:
 .PHONY: build run clean test
 
 $(PROJ): main.c $(SOURCES)
-	gcc $(CFLAGS) -o $@ main.c $(SOURCES)
+	gcc $(CFLAGS) -o $@ $< $(SOURCES)
 	@echo "Compilado correctamente."
 
 lib/aes-intrinsics.o: lib/aes-intrinsics.c include/aes-intrinsics.h
-	gcc $(CFLAGS) -o $@ lib/aes-intrinsics.c -c -maes -mavx
+	gcc $(CFLAGS) -o $@ $< -c -maes -mavx
 
 lib/aes.o: lib/aes.c include/aes.h
-	gcc $(CFLAGS) -o $@ lib/aes.c -c
+	gcc $(CFLAGS) -o $@ $< -c
 
 lib/utils.o: lib/utils.c include/utils.h
-	gcc $(CFLAGS) -o $@ lib/utils.c -c
+	gcc $(CFLAGS) -o $@ $< -c
 
 lib/ccm.o: lib/ccm.c include/ccm.h
-	gcc $(CFLAGS) -o $@ lib/ccm.c -c
+	gcc $(CFLAGS) -o $@ $< -c

@@ -76,6 +76,30 @@ void AES_128_Key_Expansion_Inv(const unsigned char *key,
   Key_Schedule[10] = Key_Schedule_tmp[0];
 }
 
+void AES_block_encrypt(__m128i in, __m128i *out, __m128i *key,
+                       int number_of_rounds) {
+  __m128i tmp;
+  int j;
+
+  tmp = _mm_xor_si128(in, key[0]);
+  for (j = 1; j < number_of_rounds; j++) {
+    tmp = _mm_aesenc_si128(tmp, ((__m128i *)key)[j]);
+  }
+  *out = _mm_aesenclast_si128(tmp, ((__m128i *)key)[number_of_rounds]);
+}
+
+void AES_block_decrypt(__m128i in, __m128i *out, __m128i *key,
+                       int number_of_rounds) {
+  __m128i tmp;
+  int j;
+
+  tmp = _mm_xor_si128(in, key[0]);
+  for (j = 1; j < number_of_rounds; j++) {
+    tmp = _mm_aesdec_si128(tmp, ((__m128i *)key)[j]);
+  }
+  *out = _mm_aesdeclast_si128(tmp, ((__m128i *)key)[number_of_rounds]);
+}
+
 /**
  * @param in Pointer to the PLAINTEXT
  * @param out Pointer to the CIPHERTEXT buffer
@@ -133,30 +157,6 @@ void AES_ECB_decrypt(const unsigned char *in, unsigned char *out,
     tmp = _mm_aesdeclast_si128(tmp, ((__m128i *)key)[j]);
     _mm_storeu_si128(&((__m128i *)out)[i], tmp);
   }
-}
-
-void AES_block_encrypt(__m128i in, __m128i *out, __m128i *key,
-                       int number_of_rounds) {
-  __m128i tmp;
-  int j;
-
-  tmp = _mm_xor_si128(in, key[0]);
-  for (j = 1; j < number_of_rounds; j++) {
-    tmp = _mm_aesenc_si128(tmp, ((__m128i *)key)[j]);
-  }
-  *out = _mm_aesenclast_si128(tmp, ((__m128i *)key)[number_of_rounds]);
-}
-
-void AES_block_decrypt(__m128i in, __m128i *out, __m128i *key,
-                       int number_of_rounds) {
-  __m128i tmp;
-  int j;
-
-  tmp = _mm_xor_si128(in, key[0]);
-  for (j = 1; j < number_of_rounds; j++) {
-    tmp = _mm_aesdec_si128(tmp, ((__m128i *)key)[j]);
-  }
-  *out = _mm_aesdeclast_si128(tmp, ((__m128i *)key)[number_of_rounds]);
 }
 
 void AES_CBC_encrypt(const unsigned char *in, unsigned char *out,

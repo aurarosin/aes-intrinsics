@@ -75,3 +75,22 @@ unsigned char* without_cms_padding(unsigned char* in, int len) {
 
   return result;
 }
+
+/**
+ * @param Blen Bits to opply xor binary operation.
+ */
+void xor (unsigned char* a, unsigned char* b, size_t Blen, unsigned char* out) {
+  __uint8_t residue = Blen % 8;
+  size_t len = residue == 0 ? Blen / 8 : (Blen / 8) + 1;
+
+  for (size_t i = 0; i < len; i++) {
+    out[i] = a[i] ^ b[i];
+  }
+
+  if (residue > 0) {
+    __uint8_t aux_residue_and_op = (1 << residue) - 1;
+    aux_residue_and_op <<= 8 - aux_residue_and_op;
+
+    out[len - 1] = (a[len - 1] ^ b[len - 1]) & aux_residue_and_op;
+  }
+}

@@ -4,10 +4,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <wmmintrin.h>
 
+#include "aes-intrinsics.h"
 #include "aes.h"
+#include "utils.h"
 
 /**
  * Encode a number x in s bits.
@@ -49,10 +50,13 @@ unsigned char* formatting_ctrl_inf_and_nonce(unsigned char* N, size_t n,
   __uint8_t Adata = a > 0 ? ADATA_ON : 0;
   __uint8_t t_encoded = encode_x_in_s(((t - 2) / 2), 3)[0] << 3;
   __uint8_t q_encoded = encode_x_in_s(q - 1, 3)[0];
+  __uint8_t flags = reserved | Adata | t_encoded | q_encoded;
 
-  B[0] = reserved | Adata | t_encoded | q_encoded;
+  B[0] = flags;
   memcpy(&B[1], N, n);
   memcpy(&B[n + 1], Q, q);
+
+  free(Q);
 
   return B;
 }
@@ -105,7 +109,6 @@ unsigned char* formatting_associated_data(unsigned char* B0, unsigned char* A,
   }
 
   *blocks_len = (a_encoded_len + a + block_residue) / 16;
-  printf("DEBUG: %lu\n", *blocks_len);
 
   return encoded;
 }
@@ -126,9 +129,9 @@ unsigned char* formatting_input_data(unsigned char* N, size_t n,
   __uint8_t* Bu = formatting_associated_data(B0, A, a, &u);
 
   size_t p_ceil = (int)ceil(p / 16.0);
-  *r = 1 + u + p_ceil;
-  printf("DEBUG: %lu %lu\n", u, p_ceil);
-  __uint8_t* B = (__uint8_t*)calloc(*r, 16);
+  *r = u + p_ceil;
+
+  __uint8_t* B = (__uint8_t*)calloc(1 + *r, 16);
   memcpy(B, B0, 16);
   memcpy(&B[16], Bu, u * 16);
   /* Formatting payload */
@@ -136,8 +139,72 @@ unsigned char* formatting_input_data(unsigned char* N, size_t n,
 
   free(B0);
   free(Bu);
-
   return B;
+}
+
+void formatting_ctr(unsigned char* N, size_t n, size_t i, unsigned char* out) {
+  if (n > 13) n = 13;
+  __uint8_t q = 15 - n;
+
+  __uint8_t reserved = 0 & 0b11111000; /* Bits to set in 0 */
+  __uint8_t q_encoded = encode_x_in_s(q - 1, 3)[0];
+  __uint8_t flags = reserved | q_encoded;
+  __uint8_t* i_encoded = encode_x_in_s(i, 8 * q);
+  // printf("i_encoded: %s\n", bytes_to_hex(i_encoded, q));
+
+  out[0] = flags;
+  memcpy(&out[1], N, n);
+  memcpy(&out[n + 1], i_encoded, q);
+  // printf("out: %s\n", bytes_to_hex(out, 16));
+
+  free(i_encoded);
+}
+
+/**
+ * The bit string consisting of the s right-most bits of the bit string X.
+ */
+void LSB(unsigned char* x, size_t lenX, size_t s, unsigned char* out) {
+  __uint8_t s_residue = s % 8;
+  size_t lsb_bytes_len =
+      s_residue == 0 ? s / 8 : s / 8 + 1; /* Number of bytes */
+
+  if (lsb_bytes_len > lenX) {
+    /* TODO */
+  }
+
+  for (size_t i = 0; i < lsb_bytes_len; i++) {
+    out[i] = x[lenX - lsb_bytes_len + i];
+  }
+
+  /* Remove left excess bits */
+  if (s_residue > 0) {
+    __uint8_t aux_residue_and_op = (1 << s_residue) - 1;
+    out[0] &= aux_residue_and_op;
+  }
+}
+
+/**
+ * The bit string consisting of the s left-most bits of the bit string X.
+ */
+void MSB(unsigned char* x, size_t lenX, size_t s, unsigned char* out) {
+  __uint8_t s_residue = s % 8;
+  size_t msb_bytes_len =
+      s_residue == 0 ? s / 8 : s / 8 + 1; /* Number of bytes */
+
+  if (msb_bytes_len > lenX) {
+    /* TODO */
+  }
+
+  for (size_t i = 0; i < msb_bytes_len; i++) {
+    out[i] = x[i];
+  }
+
+  /* Remove left excess bits */
+  if (s_residue > 0) {
+    __uint8_t aux_residue_and_op = (1 << s_residue) - 1;
+    aux_residue_and_op <<= 8 - aux_residue_and_op;
+    out[0] &= aux_residue_and_op;
+  }
 }
 
 // 1.Apply the formatting function to ( N , A , P ) to produce the blocks B 0 ,
@@ -151,40 +218,77 @@ unsigned char* formatting_input_data(unsigned char* N, size_t n,
 // 6.For j =0 to m , do S j = CIPH K ( Ctr j ).
 // 7.Set S= S 1 || S 2 || ...|| S m .
 // 8.Return C =( P ⊕ MSB Plen ( S )) || ( T ⊕ MSB Tlen ( S 0 )).
-
-void ccm(int nonce, char* A, char* P, unsigned char* key) {
-  // 1.Apply the formatting function to ( N , A , P ) to produce the blocks B 0
-  // , B 1 , ..., B r .
-  int lenP = strlen(P);
-  int lenP_r = lenP / 128;
-  unsigned char b[lenP_r];
-  // unsigned char y[lenP_r];
-  int newLen =
-      ((lenP + 1) % 16 == 0) ? (lenP + 1) : (lenP + 1) + (16 - (lenP + 1) % 16);
-
-  unsigned char y[newLen];
-
-  int number_of_rounds = 10;
+void ccm(unsigned char* nonce, size_t n, unsigned char* A, size_t a,
+         unsigned char* P, size_t p, unsigned char* key, size_t Tlen,
+         unsigned char* out) {
   unsigned char key_expanded[16 * (ROUNDS + 1)];
   AES_128_Key_Expansion((const unsigned char*)key, key_expanded);
-  // 2.Set Y 0 = CIPH K ( B 0 ).
-  __m128i in;
-  in = _mm_loadu_si128((__m128i*)b[0]);
-  // y[0]= CIPH K ( B 0 ).
-  // void AES_block_encrypt(__m128i in, __m128i *out, __m128i *key, int
-  // number_of_rounds)
+  // printf("A: %s\n", bytes_to_hex(A, a));
+  // printf("K: %s\n", bytes_to_hex(key, 16));
 
-  AES_block_encrypt(in, &y[0], (__m128i*)key_expanded, number_of_rounds);
+  size_t r;
+  size_t Plen = p * 8, t = Tlen % 8 == 0 ? Tlen / 8 : Tlen / 8 + 1;
+  // printf("n:%d, a:%d, p:%d\n", n, a, p);
+
+  // 1.Apply the formatting function to ( N , A , P ) to produce the blocks
+  // B 0 , B 1 , ..., B r .
+  unsigned char* b = formatting_input_data(nonce, n, A, a, P, p, t, &r);
+  // printf("B: %s\n", bytes_to_hex(b, (1 + r) * 16));
+  // printf("r: %d\n", r);
+
+  unsigned char y[16 * (1 + r)];
+  unsigned char ivec[16];
+  memset(ivec, 0, 16);
+
+  // 2.Set Y 0 = CIPH K ( B 0 ).
+  AES_CBC_encrypt(b, y, ivec, 16, key_expanded, ROUNDS);
 
   // 3.For i = 1 to r , do Y i = CIPH K ( B i ⊕ Y i-1 ).
-  unsigned char* text_bytes = cms_padding((unsigned char*)b, lenP);
-  AES_CBC_encrypt(text_bytes, y, y[0], newLen, key_expanded, ROUNDS);
-  // char* encrypt = bytes_to_hex(encrypt_bytes, newLen);
+  for (size_t i = 1; i <= r; i++) {
+    AES_CBC_encrypt(&b[16 * i], &y[16 * i], &y[16 * (i - 1)], 16, key_expanded,
+                    ROUNDS);
+  }
 
   // 4.Set T =MSB Tlen ( Y r ). la cadena de tamaño Tlen de los bits mas
-  // significativos izquierdos de Yr unsigned char* T=
+  // significativos izquierdos de Yr
+  unsigned char T[t];
+  MSB(&y[r * 16], 16, Tlen, T);
+  // printf("T: %s\n", bytes_to_hex(&T[0], t));
 
   //  5.Apply the counter generation function to generate the counter blocks Ctr
   //  0 , Ctr 1 ,
   // ..., Ctr m , where m = ⎡ Plen 128 ⎤
+  size_t m = (size_t)ceil(Plen / 128.0);
+  __uint8_t ctr[16 * (1 + m)];
+
+  for (size_t i = 0; i <= m; i++) {
+    formatting_ctr(nonce, n, i, &ctr[16 * i]);
+  }
+  // printf("Ctr0: %s\n", bytes_to_hex(&ctr[0], 16));
+
+  // 6. For j =0 to m , do S j = CIPH K ( Ctr j ).
+  // 7. Set S= S 1 || S 2 || ...|| S m .
+  __uint8_t s0[16];
+  AES_CBC_encrypt(&ctr[0], s0, ivec, 16, key_expanded, ROUNDS);
+  // printf("S0: %s\n", bytes_to_hex(s0, 16));
+
+  __uint8_t s[16 * m];
+  for (size_t i = 1; i <= m; i++) {
+    AES_CBC_encrypt(&ctr[16 * i], &s[16 * (i - 1)], ivec, 16, key_expanded,
+                    ROUNDS);
+  }
+  // printf("ctr1: %s\n", bytes_to_hex(&ctr[16* 1], 16));
+  // printf("S1: %s\n", bytes_to_hex(&s[0], 16));
+
+  // 8. Return C =( P xor MSB Plen ( S )) || ( T xor MSB Tlen ( S 0 )).
+  __uint8_t msb_s[p];
+  __uint8_t msb_s0[t];
+
+  MSB(s, 16 * m, Plen, &msb_s[0]);
+  MSB(s0, 16, Tlen, &msb_s0[0]);
+
+  xor(P, msb_s, Plen, &out[0]);
+  xor(T, msb_s0, Tlen, &out[p]);
+
+  free(b);
 }

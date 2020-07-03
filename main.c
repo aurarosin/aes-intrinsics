@@ -59,6 +59,11 @@ void test_ccm() {
   size_t c = p + t;
   __uint8_t C[c], P_decrypt[p];
 
+  printf("K: %s\n", bytes_to_hex(K, 16));
+  printf("N: %s\n", bytes_to_hex(N, n));
+  printf("A: %s\n", bytes_to_hex(A, a));
+  printf("P: %s\n", bytes_to_hex(P, p));
+
   ccm_encrypt(N, n, A, a, P, p, K, Tlen, C);
   printf("C: %s\n", bytes_to_hex(C, c));
 

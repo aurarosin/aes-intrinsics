@@ -1,5 +1,5 @@
 PROJ=AES
-SOURCES=lib/aes-intrinsics.o lib/utils.o lib/aes.o lib/ccm.o
+SOURCES=lib/aes.o lib/ccm.o lib/gcm.o lib/utils.o lib/aes-intrinsics.o lib/gcm-intrinsics.o lib/utils-intrinsics.o
 CFLAGS=-O2 -Iinclude
 
 build: $(PROJ)
@@ -19,14 +19,23 @@ $(PROJ): main.c $(SOURCES)
 	gcc $(CFLAGS) -o $@ $< $(SOURCES)
 	@echo "Compilado correctamente."
 
-lib/aes-intrinsics.o: lib/aes-intrinsics.c include/aes-intrinsics.h
-	gcc $(CFLAGS) -o $@ $< -c -maes -mavx
-
 lib/aes.o: lib/aes.c include/aes.h
+	gcc $(CFLAGS) -o $@ $< -c
+
+lib/ccm.o: lib/ccm.c include/ccm.h
+	gcc $(CFLAGS) -o $@ $< -c
+
+lib/gcm.o: lib/gcm.c include/gcm.h
 	gcc $(CFLAGS) -o $@ $< -c
 
 lib/utils.o: lib/utils.c include/utils.h
 	gcc $(CFLAGS) -o $@ $< -c
 
-lib/ccm.o: lib/ccm.c include/ccm.h
-	gcc $(CFLAGS) -o $@ $< -c
+lib/aes-intrinsics.o: lib/aes-intrinsics.c include/aes-intrinsics.h
+	gcc $(CFLAGS) -o $@ $< -c -maes -mavx
+
+lib/utils-intrinsics.o: lib/utils-intrinsics.c include/utils-intrinsics.h
+	gcc $(CFLAGS) -o $@ $< -c -mpclmul -mavx
+
+lib/gcm-intrinsics.o: lib/gcm-intrinsics.c include/gcm-intrinsics.h
+	gcc $(CFLAGS) -o $@ $< -c -maes -mavx

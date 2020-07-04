@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <wmmintrin.h>
 
 #include "aes-intrinsics.h"
 #include "aes.h"

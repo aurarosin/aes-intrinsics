@@ -1,8 +1,15 @@
 #include "utils.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+struct timeval get_timestamp() {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv;
+}
 
 unsigned char* hex_to_bytes(const char* hex_str) {
   int len = strlen(hex_str);
@@ -79,26 +86,27 @@ unsigned char* without_cms_padding(unsigned char* in, int len) {
 /**
  * @param Blen Bits to opply xor binary operation.
  */
-void xor(unsigned char* a, unsigned char* b, size_t Blen, unsigned char* out) {
-  __uint8_t residue = Blen % 8;
-  size_t len = residue == 0 ? Blen / 8 : (Blen / 8) + 1;
+void xor
+    (unsigned char* a, unsigned char* b, size_t Blen, unsigned char* out) {
+      __uint8_t residue = Blen % 8;
+      size_t len = residue == 0 ? Blen / 8 : (Blen / 8) + 1;
 
-  for (size_t i = 0; i < len; i++) {
-    out[i] = a[i] ^ b[i];
-  }
+      for (size_t i = 0; i < len; i++) {
+        out[i] = a[i] ^ b[i];
+      }
 
-  if (residue > 0) {
-    __uint8_t aux_residue_and_op = (1 << residue) - 1;
-    aux_residue_and_op <<= 8 - aux_residue_and_op;
+      if (residue > 0) {
+        __uint8_t aux_residue_and_op = (1 << residue) - 1;
+        aux_residue_and_op <<= 8 - aux_residue_and_op;
 
-    out[len - 1] = (a[len - 1] ^ b[len - 1]) & aux_residue_and_op;
-  }
-}
+        out[len - 1] = (a[len - 1] ^ b[len - 1]) & aux_residue_and_op;
+      }
+    }
 
-/**
- * Encode a number x in s bits.
- */
-void encode_x_in_s(size_t x, size_t s, unsigned char* out) {
+    /**
+     * Encode a number x in s bits.
+     */
+    void encode_x_in_s(size_t x, size_t s, unsigned char* out) {
   __uint8_t s_residue = s % 8;
   size_t encode_len = ceill(s / 8.0); /* Number of bytes */
   memset(out, 0, encode_len);
@@ -120,13 +128,9 @@ void encode_x_in_s(size_t x, size_t s, unsigned char* out) {
   }
 }
 
-size_t bits_len(size_t bytes_len) {
-  return bytes_len * 8;
-}
+size_t bits_len(size_t bytes_len) { return bytes_len * 8; }
 
-size_t bytes_len(size_t bits_len) {
-  return ceill(bits_len / 8.0);
-}
+size_t bytes_len(size_t bits_len) { return ceill(bits_len / 8.0); }
 
 /**
  * @param a Byte array of 16 bytes.

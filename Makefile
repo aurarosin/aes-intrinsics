@@ -39,3 +39,6 @@ lib/utils-intrinsics.o: lib/utils-intrinsics.c include/utils-intrinsics.h
 
 lib/gcm-intrinsics.o: lib/gcm-intrinsics.c include/gcm-intrinsics.h
 	gcc $(CFLAGS) -o $@ $< -c -maes -mavx
+
+lib/sha-intrinsics.o: lib/sha-intrinsics.c include/sha-intrinsics.h
+	gcc $(CFLAGS) -o $@ $< -c -msha -mavx

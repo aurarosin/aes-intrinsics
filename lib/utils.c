@@ -53,8 +53,8 @@ unsigned char* bit_padding(unsigned char* in, int len) {
 }
 
 unsigned char* cms_padding(unsigned char* in, int len) {
-  int restante = 16 - (len % 16);
-  restante = restante == 0 ? 16 : restante;
+  int restante = 64 - (len % 64);
+  restante = restante == 0 ? 64 : restante;
   int newLen = (len + restante);
 
   unsigned char* result =

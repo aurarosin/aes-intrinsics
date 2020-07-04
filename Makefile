@@ -1,5 +1,5 @@
 PROJ=AES
-SOURCES=lib/aes.o lib/ccm.o lib/gcm.o lib/utils.o lib/aes-intrinsics.o lib/gcm-intrinsics.o lib/utils-intrinsics.o
+SOURCES=lib/aes.o lib/ccm.o lib/gcm.o lib/utils.o lib/aes-intrinsics.o lib/gcm-intrinsics.o lib/utils-intrinsics.o lib/sha-intrinsics.o
 CFLAGS=-O2 -Iinclude
 
 build: $(PROJ)

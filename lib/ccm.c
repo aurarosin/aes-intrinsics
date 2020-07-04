@@ -10,53 +10,29 @@
 #include "aes.h"
 #include "utils.h"
 
-/**
- * Encode a number x in s bits.
- */
-unsigned char* encode_x_in_s(size_t x, size_t s) {
-  __uint8_t s_residue = s % 8;
-  size_t encode_len = s_residue == 0 ? s / 8 : s / 8 + 1; /* Number of bytes */
-  unsigned char* encode = (unsigned char*)calloc(encode_len, 1);
-
-  /* Copy bytes of x number into a bytes array */
-  __uint8_t x_bytes_len = encode_len > 8 ? 8 : encode_len;
-  __uint8_t* x_bytes = (__uint8_t*)malloc(x_bytes_len);
-  memcpy(x_bytes, &x, x_bytes_len);
-
-  /* Remove excess bits */
-  if (s_residue != 0) {
-    __uint8_t aux_residue_and_op = (1 << s_residue) - 1;
-    x_bytes[x_bytes_len - 1] = x_bytes[x_bytes_len - 1] & aux_residue_and_op;
-  }
-
-  /* Copy in reverse bytes array of x number */
-  for (__uint8_t i = 0; i < x_bytes_len; i++) {
-    encode[encode_len - 1 - i] = x_bytes[i];
-  }
-
-  free(x_bytes);
-  return encode;
-}
-
 unsigned char* formatting_ctrl_inf_and_nonce(unsigned char* N, size_t n,
                                              size_t a, size_t p, size_t t) {
   unsigned char* B = (unsigned char*)malloc(16);
 
   if (n > 13) n = 13;
   __uint8_t q = 15 - n;
-  __uint8_t* Q = encode_x_in_s(p, 8 * q);
+  __uint8_t Q[q];
+  encode_x_in_s(p, 8 * q, Q);
 
   __uint8_t reserved = 0;
   __uint8_t Adata = a > 0 ? ADATA_ON : 0;
-  __uint8_t t_encoded = encode_x_in_s(((t - 2) / 2), 3)[0] << 3;
-  __uint8_t q_encoded = encode_x_in_s(q - 1, 3)[0];
+  __uint8_t t_encoded;
+  __uint8_t q_encoded;
+
+  encode_x_in_s(((t - 2) / 2), 3, &t_encoded);
+  t_encoded <<= 3;
+  encode_x_in_s(q - 1, 3, &q_encoded);
+
   __uint8_t flags = reserved | Adata | t_encoded | q_encoded;
 
   B[0] = flags;
   memcpy(&B[1], N, n);
   memcpy(&B[n + 1], Q, q);
-
-  free(Q);
 
   return B;
 }
@@ -70,10 +46,12 @@ unsigned char* formatting_associated_data(unsigned char* B0, unsigned char* A,
   /* Encode value 'a' */
   if (Adata > 0) {
     if (a < 65280) {  // 2^16 - 2^8
-      encoded = encode_x_in_s(a, 16);
+      encoded = (__uint8_t*)malloc(2);
+      encode_x_in_s(a, 16, encoded);
       a_encoded_len = 2;
     } else if (a >= 65280 && a < 4294967296L) {  // 2^32
-      __uint8_t* a_encoded = encode_x_in_s(a, 32);
+      __uint8_t a_encoded[4];
+      encode_x_in_s(a, 32, a_encoded);
       a_encoded_len = 6;
       encoded = (__uint8_t*)malloc(a_encoded_len);
 
@@ -84,7 +62,8 @@ unsigned char* formatting_associated_data(unsigned char* B0, unsigned char* A,
         encoded[2 + i] = a_encoded[i];
       }
     } else {
-      __uint8_t* a_encoded = encode_x_in_s(a, 64);
+      __uint8_t a_encoded[8];
+      encode_x_in_s(a, 64, a_encoded);
       a_encoded_len = 10;
       encoded = (__uint8_t*)malloc(a_encoded_len);
 
@@ -147,17 +126,17 @@ void formatting_ctr(unsigned char* N, size_t n, size_t i, unsigned char* out) {
   __uint8_t q = 15 - n;
 
   __uint8_t reserved = 0 & 0b11111000; /* Bits to set in 0 */
-  __uint8_t q_encoded = encode_x_in_s(q - 1, 3)[0];
+  __uint8_t q_encoded;
+  encode_x_in_s(q - 1, 3, &q_encoded);
   __uint8_t flags = reserved | q_encoded;
-  __uint8_t* i_encoded = encode_x_in_s(i, 8 * q);
+  __uint8_t i_encoded[q];
+  encode_x_in_s(i, 8 * q, i_encoded);
   // printf("i_encoded: %s\n", bytes_to_hex(i_encoded, q));
 
   out[0] = flags;
   memcpy(&out[1], N, n);
   memcpy(&out[n + 1], i_encoded, q);
   // printf("out: %s\n", bytes_to_hex(out, 16));
-
-  free(i_encoded);
 }
 
 void counter_generation(unsigned char* N, size_t n, size_t m,

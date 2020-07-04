@@ -95,6 +95,66 @@ void xor(unsigned char* a, unsigned char* b, size_t Blen, unsigned char* out) {
   }
 }
 
+/**
+ * Encode a number x in s bits.
+ */
+void encode_x_in_s(size_t x, size_t s, unsigned char* out) {
+  __uint8_t s_residue = s % 8;
+  size_t encode_len = ceill(s / 8.0); /* Number of bytes */
+  memset(out, 0, encode_len);
+
+  /* Copy bytes of x number into a bytes array */
+  __uint8_t x_bytes_len = encode_len > 8 ? 8 : encode_len;
+  __uint8_t x_bytes[x_bytes_len];
+  memcpy(x_bytes, &x, x_bytes_len);
+
+  /* Remove excess bits */
+  if (s_residue != 0) {
+    __uint8_t aux_residue_and_op = (1 << s_residue) - 1;
+    x_bytes[x_bytes_len - 1] &= aux_residue_and_op;
+  }
+
+  /* Copy in reverse bytes array of x number */
+  for (__uint8_t i = 0; i < x_bytes_len; i++) {
+    out[encode_len - 1 - i] = x_bytes[i];
+  }
+}
+
 size_t bits_len(size_t bytes_len) {
   return bytes_len * 8;
+}
+
+size_t bytes_len(size_t bits_len) {
+  return ceill(bits_len / 8.0);
+}
+
+/**
+ * @param a Byte array of 16 bytes.
+ * @param b Byte array of 16 bytes.
+ * @param out Byte array of 32 bytes.
+ */
+void mult(unsigned char* a, unsigned char* b, unsigned char* out) {
+  // __m128i res_ll, res_hl, res_lh, res_hh_aux;
+  // __m256i res_hh, result;
+  // __m128i __a = _mm_loadu_si128((__m128i*)a);
+  // __m128i __b = _mm_loadu_si128((__m128i*)b);
+
+  // res_ll = _mm_clmulepi64_si128(__a, __b, 0x00);
+  // res_hl = _mm_clmulepi64_si128(__a, __b, 0x01);
+  // res_lh = _mm_clmulepi64_si128(__a, __b, 0x10);
+  // res_hh_aux = _mm_clmulepi64_si128(__a, __b, 0x11);
+
+  // /* Offset */
+  // res_hl = res_hl << 64;
+  // res_lh = res_lh << 64;
+
+  // uint8_t res_hh_aux_array[32];
+  // memset(res_hh_aux_array, 0, 32);
+  // _mm_storeu_si128((__m128i*)res_hh_aux_array, res_hh_aux);
+  // res_hh = _mm256_loadu_si256((__m256i*)res_hh_aux_array);
+  // res_hh = res_hh << 128;
+
+  // /* Reduction */
+
+  // _mm_storeu_si128((__m128i*)out, result);
 }

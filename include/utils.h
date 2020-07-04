@@ -6,3 +6,4 @@ unsigned char* bit_padding(unsigned char* in, int len);
 unsigned char* cms_padding(unsigned char* in, int len);
 unsigned char* without_cms_padding(unsigned char* in, int len);
 void xor (unsigned char* a, unsigned char* b, size_t Blen, unsigned char* out);
+size_t bits_len(size_t bytes_len);

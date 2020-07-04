@@ -7,6 +7,9 @@
 #include "aes-intrinsics.h"
 #include "utils.h"
 
+#define IV \
+  { 34, 15, 20, 79, 33, 7, 1, 99, 58, 109, 12, 218, 172, 4, 86, 42 }
+
 char* text_encrypt(char* text, char* key_bytes) {
   int len = strlen(text);
   unsigned char* text_bytes = cms_padding((unsigned char*)text, len);

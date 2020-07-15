@@ -1,5 +1,5 @@
 PROJ=AES
-SOURCES=lib/aes.o lib/ccm.o lib/gcm.o lib/utils.o lib/aes-intrinsics.o lib/gcm-intrinsics.o lib/utils-intrinsics.o lib/sha-intrinsics.o
+SOURCES=lib/aes.o lib/ccm.o lib/gcm.o lib/utils.o lib/aes-intrinsics.o lib/gcm-intrinsics.o lib/utils-intrinsics.o lib/sha256-intrinsics.o lib/sha256.o
 CFLAGS=-O2 -Iinclude
 
 build: $(PROJ)
@@ -40,5 +40,8 @@ lib/utils-intrinsics.o: lib/utils-intrinsics.c include/utils-intrinsics.h
 lib/gcm-intrinsics.o: lib/gcm-intrinsics.c include/gcm-intrinsics.h
 	gcc $(CFLAGS) -o $@ $< -c -maes -mavx
 
-lib/sha-intrinsics.o: lib/sha-intrinsics.c include/sha-intrinsics.h
-	gcc $(CFLAGS) -o $@ $< -c -msha -mavx
+lib/sha256-intrinsics.o: lib/sha256-intrinsics.c include/sha256-intrinsics.h
+	gcc $(CFLAGS) -o $@ $< -c -msse4.1 -msha
+
+lib/sha256.o: lib/sha256.c include/sha256.h
+	gcc $(CFLAGS) -o $@ $< -c -msse4.1 -msha

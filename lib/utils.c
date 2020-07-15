@@ -37,8 +37,23 @@ char* bytes_to_hex(unsigned char* bytes, int len) {
   return hex;
 }
 
+unsigned char* zero_padding(unsigned char* in, int len) {
+  int restante = 64 - ((len + 1) % 64);
+  restante = restante == 0 ? 64 : restante;
+  int newLen = (len + 1) + restante;
+
+  unsigned char* result =
+      (unsigned char*)malloc(sizeof(unsigned char) * newLen);
+
+  memset(result, 0, sizeof(char) * newLen);
+  memcpy(result, in, len);
+
+  return result;
+}
+
 unsigned char* bit_padding(unsigned char* in, int len) {
-  int restante = 16 - ((len + 1) % 16);
+  int restante = 64 - ((len + 1) % 64);
+  restante = restante == 0 ? 64 : restante;
   int newLen = (len + 1) + restante;
 
   unsigned char* result =

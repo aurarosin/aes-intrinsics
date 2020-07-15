@@ -1,10 +1,8 @@
-#include "sha-intrinsics.h"
-
+#include "sha256-intrinsics.h"
+#include <stdio.h>
 #include <immintrin.h>
 
-/* Process multiple blocks. The caller is responsible for setting the initial */
-/*  out, and the caller is responsible for padding the final block.        */
-void sha256(const uint8_t data[], uint32_t out[8], uint32_t nbytes) {
+void sha256_process_intrinsics(uint32_t hash[8], const uint8_t data[], size_t nbytes) {
   __m128i STATE0, STATE1;
   __m128i MSG, TMP;
   __m128i MSG0, MSG1, MSG2, MSG3;
@@ -13,8 +11,8 @@ void sha256(const uint8_t data[], uint32_t out[8], uint32_t nbytes) {
       _mm_set_epi64x(0x0c0d0e0f08090a0bULL, 0x0405060700010203ULL);
 
   /* Load initial values */
-  TMP = _mm_loadu_si128((const __m128i*)&out[0]);
-  STATE1 = _mm_loadu_si128((const __m128i*)&out[4]);
+  TMP = _mm_loadu_si128((const __m128i*)&hash[0]);
+  STATE1 = _mm_loadu_si128((const __m128i*)&hash[4]);
 
   TMP = _mm_shuffle_epi32(TMP, 0xB1);          /* CDAB */
   STATE1 = _mm_shuffle_epi32(STATE1, 0x1B);    /* EFGH */
@@ -208,6 +206,42 @@ void sha256(const uint8_t data[], uint32_t out[8], uint32_t nbytes) {
   STATE1 = _mm_alignr_epi8(STATE1, TMP, 8);    /* ABEF */
 
   /* Save out */
-  _mm_storeu_si128((__m128i*)&out[0], STATE0);
-  _mm_storeu_si128((__m128i*)&out[4], STATE1);
+  _mm_storeu_si128((__m128i*)&hash[0], STATE0);
+  _mm_storeu_si128((__m128i*)&hash[4], STATE1);
+}
+
+void sha256_intrinsics(uint8_t message[], uint8_t hash[32], size_t message_len) {
+  /* initial state */
+  ((uint32_t*) hash)[0] = 0x6a09e667;
+  ((uint32_t*) hash)[1] = 0xbb67ae85;
+  ((uint32_t*) hash)[2] = 0x3c6ef372;
+  ((uint32_t*) hash)[3] = 0xa54ff53a;
+  ((uint32_t*) hash)[4] = 0x510e527f;
+  ((uint32_t*) hash)[5] = 0x9b05688c;
+  ((uint32_t*) hash)[6] = 0x1f83d9ab;
+  ((uint32_t*) hash)[7] = 0x5be0cd19;
+
+  sha256_process_intrinsics((uint32_t*) hash, message, message_len);
+
+  const uint8_t b1 = hash[0];
+  const uint8_t b2 = hash[1];
+  const uint8_t b3 = hash[2];
+  const uint8_t b4 = hash[3];
+  const uint8_t b5 = hash[4];
+  const uint8_t b6 = hash[5];
+  const uint8_t b7 = hash[6];
+  const uint8_t b8 = hash[7];
+  
+  /* e3b0c44298fc1c14... */
+  printf("SHA256 hash of empty message: ");
+  printf("%02X%02X%02X%02X%02X%02X%02X%02X...\n", b1, b2, b3, b4, b5, b6, b7,
+         b8);
+
+  int success = ((b1 == 0xE3) && (b2 == 0xB0) && (b3 == 0xC4) && (b4 == 0x42) &&
+                 (b5 == 0x98) && (b6 == 0xFC) && (b7 == 0x1C) && (b8 == 0x14));
+
+  if (success)
+    printf("Success!\n");
+  else
+    printf("Failure!\n");
 }
